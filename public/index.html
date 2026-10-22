@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Noctambule TV</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:Arial;background:#0a0a0a;color:white;height:100vh;display:flex;flex-direction:column}
+header{background:#111;padding:15px;display:flex;align-items:center;gap:10px;border-bottom:2px solid #ff0066}
+#logo{width:40px;height:40px;background:#ff0066;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:bold;cursor:pointer;user-select:none}
+#chat{flex:1;overflow-y:auto;padding:15px}
+.msg{margin:8px 0;padding:10px;border-radius:10px;max-width:80%}
+.msg.moi{background:#ff0066;margin-left:auto}
+.msg.autre{background:#222}
+#inputBar{display:flex;padding:10px;background:#111;gap:8px}
+#inputBar input{flex:1;padding:12px;border-radius:20px;border:none;background:#222;color:white}
+button{padding:12px 18px;border:none;border-radius:20px;background:#ff0066;color:white;font-weight:bold;cursor:pointer}
+#secretPanel{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.95);z-index:100;padding:20px;overflow-y:auto}
+.adminBtn{width:100%;margin:10px 0;padding:15px;background:#222;border:1px solid #ff0066;border-radius:10px;text-align:left}
+.adminBtn b{color:#ff0066}
+#premiumScreen{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:#0a0a0a;z-index:50;padding:20px;text-align:center}
+.payBox{border:2px solid #ff0066;border-radius:15px;padding:15px;margin:15px 0}
+.payBox.actif{border-color:#00ff88}
+</style>
+</head>
+<body>
+<header>
+<div id="logo">NT</div>
+<div><b id="logoText">Noctambule TV</b><br><small id="statusTxt">Gratuit - En ligne</small></div>
+</header>
+<div id="chat"></div>
+<div id="inputBar">
+<input id="msgInput" placeholder="Message inbox privé...">
+<button onclick="sendMsg()">Envoyer</button>
+</div>
+
+<div id="premiumScreen">
+<h2 style="color:#ffcc00">🌙 PREMIUM NOCTAMBULE TV</h2>
+<p style="margin:15px 0">1000 FCFA <b>INSCRIPTION DÉFINITIVE À VIE</b></p>
+<p>Tu payes 1 fois, c'est à toi pour toujours.</p>
+<div class="payBox actif">
+<h3>✅ MOOV MONEY ACTIF</h3>
+<p id="moovNum">Chargement...</p>
+<p>Nom: Noctambule TV</p>
+</div>
+<div class="payBox" style="opacity:0.5">
+<h3>⏳ AIRTEL MONEY RÉSERVÉ</h3>
+<p>Bientôt disponible</p>
+</div>
+<button onclick="document.getElementById('premiumScreen').style.display='none'">Retour en mode Gratuit</button>
+<p style="margin-top:10px;font-size:12px;color:#888">Premium activé uniquement par Super Admin</p>
+</div>
+
+<div id="secretPanel">
+<h2 style="color:#ff0066">PANNEAU DIEU - SUPER ADMIN</h2>
+<p style="margin:10px 0">Code: NOCTA-LBV-1000 | Premium 1000F Définitif</p>
+<input id="adminCode" type="password" placeholder="Ton code secret" style="width:100%;padding:12px;margin:10px 0;border-radius:10px;border:none">
+<button onclick="checkAdmin()" style="width:100%">DÉVERROUILLER</button>
+<div id="adminControls" style="display:none;margin-top:20px">
+<div class="adminBtn" onclick="adminAction('fermer')"><b>BOUTON 1 - FERMER L'APPLI</b><br>Ferme Noctambule TV pour tout le monde</div>
+<div class="adminBtn" onclick="adminAction('ouvrir')"><b>BOUTON 2 - OUVRIR L'APPLI / FORCER MAJ</b><br>Rouvre l'appli et force mise à jour</div>
+<div class="adminBtn" onclick="adminBannir()"><b>BOUTON 3 - BANNIR / DÉBANNIR</b><br>Gère les blocages temporaire et définitif</div>
+<div class="adminBtn" onclick="adminAction('premium-on')" style="background:#ffcc00;color:black"><b>BOUTON 4 - PASSER EN PREMIUM 1000F DÉFINITIF</b><br>Moov Money Actif / Airtel Réservé</div>
+<div class="adminBtn" onclick="adminAction('premium-off')" style="background:#333"><b>BOUTON 4b - REPASSER GRATUIT</b><br>Désactive le Premium</div>
+<button onclick="document.getElementById('secretPanel').style.display='none'" style="width:100%;margin-top:20px;background:#555">Fermer panneau</button>
+</div>
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+let socket = io();
+let tapCount=0, lastTap=0;
+let isSuperAdmin=false;
+
+document.getElementById('logo').addEventListener('click', ()=>{
+  let now=Date.now();
+  if(now-lastTap>1000) tapCount=0;
+  tapCount++; lastTap=now;
+  if(tapCount>=5){
+    tapCount=0;
+    document.getElementById('secretPanel').style.display='block';
+  }
+});
+document.getElementById('logoText').addEventListener('click', ()=>{
+  let now=Date.now();
+  if(now-lastTap>1000) tapCount=0;
+  tapCount++; lastTap=now;
+  if(tapCount>=5){
+    tapCount=0;
+    document.getElementById('secretPanel').style.display='block';
+  }
+});
+
+function checkAdmin(){
+  let code=document.getElementById('adminCode').value;
+  fetch('/api/super-admin',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code,action:'check'})})
+  .then(r=>{if(r.status===403) throw 'faux'; return r.json()})
+  .then(()=>{isSuperAdmin=true; document.getElementById('adminControls').style.display='block'; alert('Accès Dieu autorisé');})
+  .catch(()=>alert('Code faux - NOCTA-LBV-1000'));
+}
+
+function adminAction(action){
+  let code=document.getElementById('adminCode').value;
+  fetch('/api/super-admin',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code,action})})
+  .then(r=>r.json()).then(d=>{alert(action+' OK'); updateStatus();});
+}
+
+function adminBannir(){
+  let tel=prompt('Numéro à bannir/débannir (ex: 077123456)');
+  if(!tel) return;
+  let action=confirm('OK=Bannir définitif, Annuler=Dé-bannir')?'bannir':'debannir';
+  let code=document.getElementById('adminCode').value;
+  fetch('/api/super-admin',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code,action,tel})})
+  .then(r=>r.json()).then(()=>alert(action+' fait pour '+tel));
+}
+
+function updateStatus(){
+  fetch('/api/status').then(r=>r.json()).then(s=>{
+    document.getElementById('statusTxt').innerText=s.premiumMode ? `Premium 1000F définitif - ${s.premiumType}` : 'Gratuit - En ligne';
+    document.getElementById('moovNum').innerText=s.paiements.moov.numero;
+    if(s.premiumMode){
+      document.getElementById('premiumScreen').style.display='block';
+    }
+  });
+}
+
+socket.on('premiumActive', (d)=>{
+  if(d.actif){ document.getElementById('premiumScreen').style.display='block'; document.getElementById('statusTxt').innerText=`Premium ${d.prix}F définitif`; }
+  else { document.getElementById('premiumScreen').style.display='none'; document.getElementById('statusTxt').innerText='Gratuit - En ligne'; }
+});
+
+function sendMsg(){
+  let txt=document.getElementById('msgInput').value;
+  if(!txt) return;
+  let div=document.createElement('div'); div.className='msg moi'; div.innerText=txt;
+  document.getElementById('chat').appendChild(div);
+  socket.emit('message',{text:txt, fromTel:'moi'});
+  document.getElementById('msgInput').value='';
+}
+
+updateStatus();
+setInterval(updateStatus,5000);
+</script>
+</body>
+</html>
