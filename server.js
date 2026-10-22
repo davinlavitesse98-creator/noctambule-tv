@@ -37,10 +37,14 @@ io.on('connection', socket => {
     console.log(`CODE POUR ${data.tel}: ${code}`);
     socket.emit('codeEnvoye', code);
   });
-  socket.on('signalSpam', ({reportedTel}) => {
+    socket.on('signalSpam', ({ reportedTel }) => {
     spamReports[reportedTel] = (spamReports[reportedTel] || 0) + 1;
-    if(spamReports[reportedTel] === 1){ bans[reportedTel] = {type: 'temp', until: Date.now()+3*60*60*1000, icon: 'blocage_temporaire.png'}; } else { bans[reportedTel] = {type: 'def', icon: 'blocage_definitif.png'}; }
-    io.emit('userBanned', {tel: reportedTel, ban: bans[reportedTel]});
+    if (spamReports[reportedTel] > 3) {
+      io.emit('userBanned', { tel: reportedTel });
+      bans[reportedTel] = true;
+    }
   });
 });
-server.listen(3000, () => console.log('Noctambule TV OK - MOOV +24165538087 ACTIF - Premium 1000F pret - Port 3000'));
+
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => console.log(`Noctambule TV OK sur port ${PORT}`));
